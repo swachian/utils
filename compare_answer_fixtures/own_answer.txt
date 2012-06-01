@@ -1,0 +1,15 @@
+1  B D A B B
+6  C B C D A 
+11 D B D B A
+16 D B C B C
+21 D C C C B
+26 B D B D A 
+31 A C C A C
+36 D B A A D
+41 C D B A C
+46 A C D D A 
+51 B D D C D
+56 D A A C A
+61 C D D Z D
+66 B D C A() C 
+71 A A C D A 
