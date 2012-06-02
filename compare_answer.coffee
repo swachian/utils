@@ -63,8 +63,8 @@ class CompareAnswer
   filterNoCharacters: (io) ->
     s = ""
     for c in io 
-       if c.match /[A-Z]/
-        s = s + c 
+       if c.match /([A-Z]|[a-z])/
+         s = s + c.toUpperCase() 
     s
   
 cc = new CompareAnswer
