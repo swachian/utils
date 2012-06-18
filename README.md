@@ -35,3 +35,12 @@ Some script to assistant my business
   
 ### 2012.6.14 net.coffee
 * 练习net的用法 
+
+### 2012.6.18 readline.coffee
+* 练习编写命令行函数  
+  - 自动补完的功能还是很厚道的
+  - 1.欢迎辞
+  - 2.创建读取interface，同时加入自动补全的内容  
+  - 3.提示符设置，要包含颜色  
+  - 4.命令处理函数，根据输入做反应：1.数字，2.命令提示符，3.错误信息
+  - 5.监听line和close事件 
