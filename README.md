@@ -33,3 +33,5 @@ Some script to assistant my business
   6. `=>`在避免回调函数的this混乱方面确实有用.否则读写文件里面的this变掉后,再调用外面的不是一般的麻烦.  
   难怪 https://github.com/styleguide/javascript 里明言 **Write new JS in CoffeeScript**. 诚哉斯言!  
   
+### 2012.6.14 net.coffee
+* 练习net的用法 
