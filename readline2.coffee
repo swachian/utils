@@ -1,44 +1,60 @@
 # 读取用户输入的数字，然后告诉用户是否与state相同
 
 colors = require 'colors'
-readline = require 'readline'
 util = require 'util'
+readline = require 'readline'
 
-rl = readline.createInterface process.stdin, process.stdout, (line) ->
-  completers = '.help .q .quit .exit'.split(/\s/)
-  hits = completers.filter (command) -> 
-    return command.blue if command.match(line)
-  if hits && hits.length > 0 then [hits, line] else [completers, line]
+class CmdBase
+  constructor: (completions) ->
+    @completions =  completions || '.help .q .quit .exit'.split(' ')
+  
+  welcome: ->
+    util.puts([ "= readline-demo "
+            , "= Welcome, enter .help if you're lost."
+            , "= Try counting from 1 to 5!"
+            ].join('\n').grey)
+  
+  prompt: ->
+    @rl.setPrompt(">".green, ">".length)
+    @rl.prompt()
+  
+  listen: (exec) ->
+    @rl = readline.createInterface process.stdin, process.stdout, (line) =>
+      hits = @completions.filter (c) ->
+        if c.indexOf(line) == 0 then c 
+      if hits && hits.length >0 then [hits, line] else [@completions, line]
+    @welcome()
+    @prompt()
+    
+    exec ||= @exec
+    @rl.on 'line', (line) ->
+      exec(line.trim())
+    .on 'close', ->
+      console.log("Goodbye".red)
+      process.exit(0)
+   
+   exec: (line)->
+     util.puts("You have input a command: #{line}. Please give an exec as well")
 
-welcome = ->
-  console.log("Please come here".green)
+      
 
-prompt = ->
-  rl.setPrompt(">".blue, ">".length)
-  rl.prompt()
 
-state = 1
-exec = (command)->
-  num = parseInt(command)
-  if (1<= num && num <=5)
-    if (state == num)
-      state++
-      console.log('WIN'.green)
+class Cmd extends CmdBase
+  state: 0
+  exec: (line) =>
+    num = parseInt(line)
+    if (1<= num && num <= 5)
+      state = ++@state
+      if (state == num)
+        util.puts("HIT".green)
+      else if (state >= 6)
+        util.puts 'WOW YOU ROCKS A LOT!'.rainbow
+        process.exit(0)
+      else
+        util.puts "Try #{state}".red
     else 
-      console.log(('Try entering a different number, like ' + state + ' for example').red);
-    if state == 6 
-      console.log('WOW YOU ROCKS A LOT!'.rainbow)
-      process.exit(0)      
-  else if (command.match(/^\./))
-    switch command.slice(1)
-      when 'help'
-        console.log("The help is such")
-
-rl.on 'line', (command) ->
-  exec(command)
-  prompt()
-.on 'close', ->
-  process.exit(0)
-
-welcome()
-prompt()
+      switch line[0]
+      
+  
+cmd = new Cmd(null)
+cmd.listen(null)
