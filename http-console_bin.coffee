@@ -105,7 +105,7 @@ class Console
      console.initialize()
    返回 对象本身 this
   ###
-  initialize: =>
+  initialize: ->
     @welcome()
     
     @headers = { 'Accept': '*/*'}
@@ -189,65 +189,124 @@ class Console
       .join(', ')
       header && (headers['Cookie'] = header)
     
+  ### prompt 命令行前的提示
+   
+  ###
+  prompt: ->
+    path = '/' + @path.join('/')
+    host = "#{@host}:#{@port}"
+    arrow = '>'
+    
+    length = (host + path + arrow).length
+   
+    @readline.setPrompt((host).grey + path + arrow.grey, length)
+    @readline.prompt()
 
-   ### exec 执行脚本输入，控制操作函数
-   command - The string to be executed
-   ###
-   exec: (command) =>
-     headers = {}
-     path = @path
-     
-     if (@pending)
-       req = @request(@pending.method, @pending.path, 
-       {'Content-length': command.length}, (res, body) =>
-         @printResponse res, body, =>
-           @prompt() 
-       )
-       req.write(command)
-       req.end()
-       
-       @pending = null
-     else if (command[0] == '/')
-       if command == '//' 
-         @path = []
-       else
-         Array.prototype.push.apply(this.path, command.slice(1).split('/'))
-     else if (command == '..')
-       @path.pop()
-     else if command[0] == '.'
-       switch command.slice(1)
-         when 'h', 'headers'
-           exports.merge(headers, @headers)
-           @setCookies(headers)
-           @printHeaders(headers)
-         when 'default-headers'
-           @printHeaders(@headers)
-         when 'o', 'options'
-           inspect(@options)
-         when 'c', 'cookies'
-           inspect(@cookies)
-         when 'help'
-           puts(help)
-         when 'j', 'json'
-           @headers['Content-Type'] = 'application/json'
-         when 'exit', 'quit', 'q'
-           process.exit(0)
+
+  ### exec 执行脚本输入，控制操作函数
+  command - The string to be executed
+  ###
+  exec: (command) =>
+    headers = {}
+    path = @path
+    
+    if (@pending)
+      req = @request @pending.method, @pending.path, {'Content-length': command.length}, (res, body) =>
+        @printResponse res, body, =>
+          @prompt() 
+      
+      req.write(command)
+      req.end()
+      
+      @pending = null
+    else if (command[0] == '/')
+      if command == '//' 
+        @path = []
+      else
+        Array.prototype.push.apply(this.path, command.slice(1).split('/'))
+    else if (command == '..')
+      @path.pop()
+    else if command[0] == '.'
+      switch command.slice(1)
+        when 'h', 'headers'
+          exports.merge(headers, @headers)
+          @setCookies(headers)
+          @printHeaders(headers)
+        when 'default-headers'
+          @printHeaders(@headers)
+        when 'o', 'options'
+          inspect(@options)
+        when 'c', 'cookies'
+          inspect(@cookies)
+        when 'help'
+          puts(help)
+        when 'j', 'json'
+          @headers['Content-Type'] = 'application/json'
+        when 'exit', 'quit', 'q'
+          process.exit(0)
+    else if (match = command.match(/^([a-zA-Z-]+):\s*(.*)/))
+      if (match[2])
+        @headers[match[1]] = match[2]
+      else
+        delete(@headers[match[1]])
+    else if (/^(GET|POST|PUT|HEAD|DELETE)/i.test(command))
+      command = command.split(/\s+/)
+      method  = command.shift().toUpperCase()
+      path    = @path.slice(0)
+      
+      if (command.length > 0) then path.push(command[0])
+      
+      path = ('/' + path.join('/')).replace(/\/+/g, '/')
+      
+      if (method == 'PUT' || method == 'POST')
+        @pending = {method: method, path: path}
+        this.dataPrompt()
       else 
+        @request method, path, {}, (res, body) => 
+          @printResponse res, body, => @prompt()
+        .end()
+      return
+    else if (command)
+      puts ("unknown command '#{command}'".yellow.bold)
+    @prompt()
+    
+    
+    # 打印回应
+    # res - response
+    # body - html内容段
+    # callback - ()
+    printResponse: (res, body, callback) => 
+      status = "HTTP/#{res.httpVersion} #{res.statusCode} #{http.STATUS_CODES[res.statusCode]}".bold
+      
+      switch res.statusCode
+        when (res.statusCode >= 500) then status = status.red
+        when (res.statusCode >= 400) then status = status.yellow
+        when (res.statusCode >= 300) then status = status.cyan
+        else 
+          status = status.green 
+      
+      puts status
+      
+      printHeaders(res.headers)
+      puts 
+      
+      try
+        output = JSON.parse(body)
+      catch error
+        output = body.trim() 
+        
+      if typeof(output) == 'string'
+        output.length > 0 && print(output.white + '\n')
+      else
+        inspect(output)
+        
+      if (process.stdout.write(''))
+        callback()
+      else
+        process.stdout.on 'drain', => callback()
 
    
      
-   ### prompt 命令行前的提示
-   
-   ###
-   prompt: ->
-     path = '/' + @path.join('/')
-     host = "#{@host}:#{@port}"
-     arrow = '>'
-     
-     length = (host + path + arrow).length
-     
-     @readline.setPrompt((host).grey + path + arrow.grey, length)
-     @readline.prompt()
    
 console = new(Console)(host, port, options);
 console.initialize();
