@@ -211,7 +211,7 @@ class Console
   ### exec 执行脚本输入，控制操作函数
   command - The string to be executed
   ###
-  exec: (command) =>
+  exec: (command) ->
     headers = {}
     path = @path
     
@@ -351,6 +351,27 @@ class Console
           cookie.options.expires = new(Date)(cookie.options.expires)
   
         puts inspect(@cookies)
+        
+  version = 0.01
+    
+  help = [
+    '.h[eaders]  ' +  'show active request headers.'.grey,
+    '.o[ptions]  ' +  'show options.'.grey,
+    '.c[ookies]  ' +  'show client cookies.'.grey,
+    '.j[son]     ' +  'set \'Content-Type\' header to \'application/json\'.'.grey,
+    '.help       ' +  'display this message.'.grey,
+    '.q[uit]     ' +  'exit console.'.grey
+  ].join("\n")
+    
+  merge: (target) ->
+    args = Array.prototype.slice.call(arguments, 1)
+    
+    args.forEach (a) =>
+      keys = Object.keys(a)
+      for c, i in keys
+        target[keys[i]] = a[keys[i]]
+    target
+     
     
 console = new(Console)(host, port, options);
 console.initialize();
