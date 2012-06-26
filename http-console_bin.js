@@ -102,8 +102,10 @@
       options - 输入的一些关于cookie、session等的选项
     */
 
+    var version;
+
     function Console(host, port, options) {
-      this.exec = __bind(this.exec, this);
+      this.printResponse = __bind(this.printResponse, this);
 
       this.setCookies = __bind(this.setCookies, this);
 
@@ -239,6 +241,13 @@
       return this.readline.prompt();
     };
 
+    Console.prototype.dataPrompt = function() {
+      var prompt;
+      prompt = "...";
+      this.readline.setPrompt(prompt.grey, prompt.length);
+      return this.readline.prompt();
+    };
+
     /* exec 执行脚本输入，控制操作函数
     command - The string to be executed
     */
@@ -288,7 +297,7 @@
             inspect(this.cookies);
             break;
           case 'help':
-            puts(help);
+            puts(this.help);
             break;
           case 'j':
           case 'json':
@@ -298,6 +307,25 @@
           case 'quit':
           case 'q':
             process.exit(0);
+            break;
+          case 'dataPrompt':
+            this.dataPrompt();
+            break;
+          case 'printHeaders':
+            this.printHeaders({
+              version: '1.00',
+              "Content-Encoding": 'gzip',
+              "Content-length": 27148,
+              "Set-Cookie": '_own189189_session=BAh7CjoOcmV0dXJuX3RvMDoMdXNlcl9pZGkHOgxjc3JmX2lkIiU0MWFlNzY1%0AZmY0NWIyMWI2MGM0ZWM4OWEzMTYzOGUxNToNc3RpY2tpZXNvOhdTdGlja2ll%0Aczo6TWVzc2FnZXMIOg1Ac2Vlbl9vbnsAOgtAYnlfaWR7ADoOQG1lc3NhZ2Vz%0AewAiCmZsYXNoSUM6J0FjdGlvbkNvbnRyb2xsZXI6OkZsYXNoOjpGbGFzaEhh%0Ac2h7BjoLbm90aWNlIhtMb2dnZWQgaW4gc3VjY2Vzc2Z1bGx5BjoKQHVzZWR7%0ABjsORg%3D%3D--0fa3cd861272af9b21b537edfb17cf8733e34037; path=/'
+            });
+            break;
+          case 'rememberCookies':
+            this.rememberCookies({
+              version: '1.00',
+              "Content-Encoding": 'gzip',
+              "Content-length": 27148,
+              "set-cookie": ['_own189189_session=BAh7CjoOcmV0dXJuX3RvMDoMdXNlcl9pZGkHOgxjc3JmX2lkIiU0MWFlNzY1%0AZmY0NWIyMWI2MGM0ZWM4OWEzMTYzOGUxNToNc3RpY2tpZXNvOhdTdGlja2ll%0Aczo6TWVzc2FnZXMIOg1Ac2Vlbl9vbnsAOgtAYnlfaWR7ADoOQG1lc3NhZ2Vz%0AewAiCmZsYXNoSUM6J0FjdGlvbkNvbnRyb2xsZXI6OkZsYXNoOjpGbGFzaEhh%0Ac2h7BjoLbm90aWNlIhtMb2dnZWQgaW4gc3VjY2Vzc2Z1bGx5BjoKQHVzZWR7%0ABjsORg%3D%3D--0fa3cd861272af9b21b537edfb17cf8733e34037; path=/']
+            });
         }
       } else if ((match = command.match(/^([a-zA-Z-]+):\s*(.*)/))) {
         if (match[2]) {
@@ -330,47 +358,104 @@
       } else if (command) {
         puts(("unknown command '" + command + "'").yellow.bold);
       }
-      this.prompt();
-      return {
-        printResponse: function(res, body, callback) {
-          var output, status;
-          status = ("HTTP/" + res.httpVersion + " " + res.statusCode + " " + http.STATUS_CODES[res.statusCode]).bold;
-          switch (res.statusCode) {
-            case res.statusCode >= 500:
-              status = status.red;
-              break;
-            case res.statusCode >= 400:
-              status = status.yellow;
-              break;
-            case res.statusCode >= 300:
-              status = status.cyan;
-              break;
-            default:
-              status = status.green;
-          }
-          puts(status);
-          printHeaders(res.headers);
-          puts;
+      return this.prompt();
+    };
 
-          try {
-            output = JSON.parse(body);
-          } catch (error) {
-            output = body.trim();
+    Console.prototype.printResponse = function(res, body, callback) {
+      var output, status,
+        _this = this;
+      status = ("HTTP/" + res.httpVersion + " " + res.statusCode + " " + http.STATUS_CODES[res.statusCode]).bold;
+      switch (res.statusCode) {
+        case res.statusCode >= 500:
+          status = status.red;
+          break;
+        case res.statusCode >= 400:
+          status = status.yellow;
+          break;
+        case res.statusCode >= 300:
+          status = status.cyan;
+          break;
+        default:
+          status = status.green;
+      }
+      puts(status);
+      printHeaders(res.headers);
+      puts;
+
+      try {
+        output = JSON.parse(body);
+      } catch (error) {
+        output = body.trim();
+      }
+      if (typeof output === 'string') {
+        output.length > 0 && print(output.white + '\n');
+      } else {
+        inspect(output);
+      }
+      if (process.stdout.write('')) {
+        return callback();
+      } else {
+        return process.stdout.on('drain', function() {
+          return callback();
+        });
+      }
+    };
+
+    Console.prototype.printHeaders = function(headers) {
+      var _this = this;
+      return Object.keys(headers).forEach(function(k) {
+        var key;
+        key = k.replace(/\b([a-z])/g, function($0, $1) {
+          return $1.toUpperCase();
+        }).bold;
+        return puts(key + ': ' + headers[k]);
+      });
+    };
+
+    Console.prototype.rememberCookies = function(headers) {
+      var _this = this;
+      puts('aaaa');
+      if ('set-cookie' in headers) {
+        return headers['set-cookie'].forEach(function(c) {
+          var cookie, name, parts, value;
+          parts = c.split(/; */);
+          cookie = parts.shift().match(/^(.+?)=(.*)$/).slice(1);
+          name = cookie[0];
+          value = querystring.unescape(cookie[1]);
+          cookie = _this.cookies[name] = {
+            value: value,
+            options: {}
+          };
+          parts.forEach(function(part) {
+            part = part.split('=');
+            return cookie.options[part[0]] = part.length > 1 ? part[1] : true;
+          });
+          if (cookie.options.expires) {
+            cookie.options.expires = new Date(cookie.options.expires);
           }
-          if (typeof output === 'string') {
-            output.length > 0 && print(output.white + '\n');
-          } else {
-            inspect(output);
-          }
-          if (process.stdout.write('')) {
-            return callback();
-          } else {
-            return process.stdout.on('drain', function() {
-              return callback();
-            });
-          }
+          return puts(inspect(_this.cookies));
+        });
+      }
+    };
+
+    version = 0.01;
+
+    Console.help = ['.h[eaders]  ' + 'show active request headers.'.grey, '.o[ptions]  ' + 'show options.'.grey, '.c[ookies]  ' + 'show client cookies.'.grey, '.j[son]     ' + 'set \'Content-Type\' header to \'application/json\'.'.grey, '.help       ' + 'display this message.'.grey, '.q[uit]     ' + 'exit console.'.grey];
+
+    Console.prototype.merge = function(target) {
+      var _this = this;
+      args = Array.prototype.slice.call(arguments, 1);
+      args.forEach(function(a) {
+        var c, i, keys, _j, _len1, _results;
+        keys = Object.keys(a);
+        _results = [];
+        for (i = _j = 0, _len1 = keys.length; _j < _len1; i = ++_j) {
+          c = keys[i];
+          _results.push(target[keys[i]] = a[keys[i]]);
         }
-      };
+        return _results;
+      });
+      return target;
     };
 
     return Console;

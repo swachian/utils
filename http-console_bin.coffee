@@ -202,11 +202,16 @@ class Console
     @readline.setPrompt((host).grey + path + arrow.grey, length)
     @readline.prompt()
 
-
+  # dataPrompt 输出数据的提示
+  dataPrompt: ->
+    prompt = "..."
+    @readline.setPrompt(prompt.grey, prompt.length)
+    @readline.prompt()
+  
   ### exec 执行脚本输入，控制操作函数
   command - The string to be executed
   ###
-  exec: (command) =>
+  exec: (command) ->
     headers = {}
     path = @path
     
@@ -244,6 +249,12 @@ class Console
           @headers['Content-Type'] = 'application/json'
         when 'exit', 'quit', 'q'
           process.exit(0)
+        when 'dataPrompt'
+          @dataPrompt()
+        when 'printHeaders'
+          @printHeaders({version: '1.00', "Content-Encoding": 'gzip', "Content-length":27148, "Set-Cookie": '_own189189_session=BAh7CjoOcmV0dXJuX3RvMDoMdXNlcl9pZGkHOgxjc3JmX2lkIiU0MWFlNzY1%0AZmY0NWIyMWI2MGM0ZWM4OWEzMTYzOGUxNToNc3RpY2tpZXNvOhdTdGlja2ll%0Aczo6TWVzc2FnZXMIOg1Ac2Vlbl9vbnsAOgtAYnlfaWR7ADoOQG1lc3NhZ2Vz%0AewAiCmZsYXNoSUM6J0FjdGlvbkNvbnRyb2xsZXI6OkZsYXNoOjpGbGFzaEhh%0Ac2h7BjoLbm90aWNlIhtMb2dnZWQgaW4gc3VjY2Vzc2Z1bGx5BjoKQHVzZWR7%0ABjsORg%3D%3D--0fa3cd861272af9b21b537edfb17cf8733e34037; path=/'})
+        when 'rememberCookies'
+          @rememberCookies({version: '1.00', "Content-Encoding": 'gzip', "Content-length":27148, "set-cookie": ['_own189189_session=BAh7CjoOcmV0dXJuX3RvMDoMdXNlcl9pZGkHOgxjc3JmX2lkIiU0MWFlNzY1%0AZmY0NWIyMWI2MGM0ZWM4OWEzMTYzOGUxNToNc3RpY2tpZXNvOhdTdGlja2ll%0Aczo6TWVzc2FnZXMIOg1Ac2Vlbl9vbnsAOgtAYnlfaWR7ADoOQG1lc3NhZ2Vz%0AewAiCmZsYXNoSUM6J0FjdGlvbkNvbnRyb2xsZXI6OkZsYXNoOjpGbGFzaEhh%0Ac2h7BjoLbm90aWNlIhtMb2dnZWQgaW4gc3VjY2Vzc2Z1bGx5BjoKQHVzZWR7%0ABjsORg%3D%3D--0fa3cd861272af9b21b537edfb17cf8733e34037; path=/']})
     else if (match = command.match(/^([a-zA-Z-]+):\s*(.*)/))
       if (match[2])
         @headers[match[1]] = match[2]
@@ -271,43 +282,97 @@ class Console
     @prompt()
     
     
-    # 打印回应
-    # res - response
-    # body - html内容段
-    # callback - ()
-    printResponse: (res, body, callback) => 
-      status = "HTTP/#{res.httpVersion} #{res.statusCode} #{http.STATUS_CODES[res.statusCode]}".bold
+  # 打印回应
+  # res - response
+  # body - html内容段
+  # callback - ()
+  printResponse: (res, body, callback) => 
+    status = "HTTP/#{res.httpVersion} #{res.statusCode} #{http.STATUS_CODES[res.statusCode]}".bold
+    
+    switch res.statusCode
+      when (res.statusCode >= 500) then status = status.red
+      when (res.statusCode >= 400) then status = status.yellow
+      when (res.statusCode >= 300) then status = status.cyan
+      else 
+        status = status.green 
+    
+    puts status
+    
+    printHeaders(res.headers)
+    puts 
       
-      switch res.statusCode
-        when (res.statusCode >= 500) then status = status.red
-        when (res.statusCode >= 400) then status = status.yellow
-        when (res.statusCode >= 300) then status = status.cyan
-        else 
-          status = status.green 
+    try
+      output = JSON.parse(body)
+    catch error
+      output = body.trim() 
       
-      puts status
-      
-      printHeaders(res.headers)
-      puts 
-      
-      try
-        output = JSON.parse(body)
-      catch error
-        output = body.trim() 
+    if typeof(output) == 'string'
+      output.length > 0 && print(output.white + '\n')
+    else
+      inspect(output)
         
-      if typeof(output) == 'string'
-        output.length > 0 && print(output.white + '\n')
-      else
-        inspect(output)
-        
-      if (process.stdout.write(''))
-        callback()
-      else
-        process.stdout.on 'drain', => callback()
+    if (process.stdout.write(''))
+      callback()
+    else
+      process.stdout.on 'drain', => callback()
+   
+  # 打印  http头消息
+  # heders: hash to be printed
+  printHeaders: (headers)->
+    Object.keys(headers).forEach (k) =>
+      key = k.replace /\b([a-z])/g, ($0, $1) =>
+        $1.toUpperCase()
+      .bold
+      puts(key + ': ' + headers[k])
 
-   
+  #记录cookie
+  #  将res中形如"set-cookie": ['_own189189_session=BAh7CjoOcmV0dXJuX3RvMDoMdXNlcl9pZGkHOgxjc3JmX2lkIiU0MWFlNzY1%0AZmY0NWIyMWI2MGM0ZWM4OWEzMTYzOGUxNToNc3RpY2tpZXNvOhdTdGlja2ll%0Aczo6TWVzc2FnZXMIOg1Ac2Vlbl9vbnsAOgtAYnlfaWR7ADoOQG1lc3NhZ2Vz%0AewAiCmZsYXNoSUM6J0FjdGlvbkNvbnRyb2xsZXI6OkZsYXNoOjpGbGFzaEhh%0Ac2h7BjoLbm90aWNlIhtMb2dnZWQgaW4gc3VjY2Vzc2Z1bGx5BjoKQHVzZWR7%0ABjsORg%3D%3D--0fa3cd861272af9b21b537edfb17cf8733e34037; path=/']
+  #  的内容放入到request的cookies中,包括name, value, expires
+  #headers - Hash of cookie
+  rememberCookies: (headers) ->
+    puts 'aaaa'
+    if ('set-cookie' of headers)
+      headers['set-cookie'].forEach (c) =>
+        parts = c.split(/; */)
+        cookie = parts.shift().match(/^(.+?)=(.*)$/).slice(1);
+        name = cookie[0]
+        value = querystring.unescape(cookie[1])
+        
+        
+        cookie = @cookies[name] =
+          value: value,
+          options: {}
+        
+        parts.forEach (part) =>
+          part = part.split('=')
+          cookie.options[part[0]] = if part.length>1 then part[1] else true
+          
+        if (cookie.options.expires)
+          cookie.options.expires = new(Date)(cookie.options.expires)
+  
+        puts inspect(@cookies)
+        
+  version = 0.01
+    
+  help = [
+    '.h[eaders]  ' +  'show active request headers.'.grey,
+    '.o[ptions]  ' +  'show options.'.grey,
+    '.c[ookies]  ' +  'show client cookies.'.grey,
+    '.j[son]     ' +  'set \'Content-Type\' header to \'application/json\'.'.grey,
+    '.help       ' +  'display this message.'.grey,
+    '.q[uit]     ' +  'exit console.'.grey
+  ].join("\n")
+    
+  merge: (target) ->
+    args = Array.prototype.slice.call(arguments, 1)
+    
+    args.forEach (a) =>
+      keys = Object.keys(a)
+      for c, i in keys
+        target[keys[i]] = a[keys[i]]
+    target
      
-   
+    
 console = new(Console)(host, port, options);
 console.initialize();
 
